@@ -112,9 +112,30 @@
         </dependency>
 
     </dependencies>
-
+    
+    <profiles>  
+	     <profile>  
+	         <id>dev</id>  
+	         <properties>  
+	             <env.active>dev</env.active>  
+	         </properties>
+	         <activation>
+                <!--默认生效的配置组-->
+                <activeByDefault>true</activeByDefault>
+             </activation>  
+	     </profile>  
+	     <profile>  
+	         <id>sit</id>  
+	         <properties>  
+	             <env.active>sit</env.active>  
+	         </properties>  
+	     </profile>
+	</profiles>
+	
     <build>
+	    <finalName>${project.artifactId}</finalName>
         <plugins>
+            <!-- 
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -126,6 +147,123 @@
                     </dependency>
                 </dependencies>
             </plugin>
+             -->
+            
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>appassembler-maven-plugin</artifactId>
+                <version>2.0.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>generate-daemons</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <assembleDirectory>${project.build.directory}/${project.artifactId}</assembleDirectory>
+                    <binFileName>start</binFileName>
+                    <binFileExtensions>
+                        <unix>.sh</unix>
+                    </binFileExtensions>
+                    <repositoryName>lib</repositoryName>
+                    <configurationDirectory>conf</configurationDirectory>
+                    <copyConfigurationDirectory>true</copyConfigurationDirectory>
+                    <configurationSourceDirectory>src/main/resources</configurationSourceDirectory>
+                    <repositoryLayout>flat</repositoryLayout>
+                    <encoding>UTF-8</encoding>
+                    <logsDirectory>logs</logsDirectory>
+                    <tempDirectory>tmp</tempDirectory>
+                    <target>${project.build.directory}</target>
+                    <daemons>
+                        <daemon>
+                            <id>${project.build.finalName}</id>
+                            <mainClass>tk.mybatis.springboot.Application</mainClass>
+                            <platforms>
+                                <platform>jsw</platform>
+                            </platforms>
+                            <generatorConfigurations>
+                                <generatorConfiguration>
+                                    <generator>jsw</generator>
+                                    <includes>
+                                        <include>linux-x86-32</include>
+                                        <include>linux-x86-64</include>
+                                        <include>windows-x86-32</include>
+                                        <include>windows-x86-64</include>
+                                    </includes>
+                                    <configuration>
+                                        <property>
+                                            <name>configuration.directory.in.classpath.first</name>
+                                            <value>conf</value>
+                                        </property>
+                                        <property>
+                                            <name>wrapper.ping.timeout</name>
+                                            <value>120</value>
+                                        </property>
+                                        <property>
+                                            <name>set.default.REPO_DIR</name>
+                                            <value>lib</value>
+                                        </property>
+                                        <property>
+                                            <name>wrapper.logfile</name>
+                                            <value>logs/wrapper.YYYYMMDD.log</value>
+                                        </property>
+                                        <property>
+                                            <name>wrapper.logfile.rollmode</name>
+                                            <value>DATE</value>
+                                        </property>
+                                    </configuration>
+                                </generatorConfiguration>
+                            </generatorConfigurations>
+                            <jvmSettings>
+                                <extraArguments>
+                                    <extraArgument>-server</extraArgument>
+                                    <extraArgument>-Xmx128m</extraArgument>
+                                    <extraArgument>-Xms128m</extraArgument>
+                                </extraArguments>
+                                <systemProperties>
+                                    <systemProperty>spring.profiles.active=${env.active}</systemProperty>
+                                </systemProperties>
+                            </jvmSettings>
+                        </daemon>
+                    </daemons>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <tasks>
+                                <move file="${project.build.directory}/jsw/${project.build.finalName}/bin/start"
+                                      tofile="${project.build.directory}/jsw/${project.build.finalName}/bin/start.sh"/>
+
+                                <tar compression="gzip" destfile="${project.build.directory}/${project.build.finalName}.tar.gz">
+                                    <tarfileset dir="${project.build.directory}/jsw/${project.build.finalName}"
+                                                prefix="${project.build.finalName}" dirmode="0744" filemode="0744">
+                                        <include name="**"/>
+                                    </tarfileset>
+									
+                                    <tarfileset dir="${project.build.directory}/jsw/${project.build.finalName}/bin"
+                                                prefix="${project.build.finalName}/bin" dirmode="0755" filemode="0755">
+                                        <include name="**"/>
+                                    </tarfileset>
+                                    
+                                </tar>
+                            </tasks>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            
             <plugin>
                 <groupId>org.mybatis.generator</groupId>
                 <artifactId>mybatis-generator-maven-plugin</artifactId>
